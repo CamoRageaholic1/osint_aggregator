@@ -3,41 +3,67 @@ import requests
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://dnsdumpster.com/"
+HACKERTARGET_URL = "https://api.hackertarget.com/hostsearch/?q={}"
 
-def get_dns_info(domain):
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
+    "Referer": "https://dnsdumpster.com/",
+}
+
+def _try_dnsdumpster(domain):
     session = requests.Session()
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114 Safari/537.36"
-    }
-
     try:
-        # Get CSRF token
-        res = session.get(BASE_URL, headers=headers)
+        res = session.get(BASE_URL, headers=HEADERS, timeout=12)
         soup = BeautifulSoup(res.text, "html.parser")
-        csrf = soup.find("input", {"name": "csrfmiddlewaretoken"}).get("value")
-        cookies = res.cookies.get_dict()
+        token_input = soup.find("input", {"name": "csrfmiddlewaretoken"})
+        if not token_input:
+            return None
 
-        # Submit domain with token
-        data = {
-            "csrfmiddlewaretoken": csrf,
-            "targetip": domain
-        }
-        res = session.post(BASE_URL, headers=headers, cookies=cookies, data=data)
+        csrf = token_input.get("value")
+        data = {"csrfmiddlewaretoken": csrf, "targetip": domain, "user": "free"}
+        res = session.post(
+            BASE_URL,
+            headers={**HEADERS, "Origin": "https://dnsdumpster.com"},
+            cookies=res.cookies.get_dict(),
+            data=data,
+            timeout=15,
+        )
         soup = BeautifulSoup(res.text, "html.parser")
-
         results = []
-        tables = soup.find_all("table")
-        if not tables:
-            return ["[!] No data found or blocked by DNSDumpster."]
-
-        # Parse DNS records from tables
-        for table in tables:
-            for row in table.find_all("tr")[1:]:  # Skip header row
+        for table in soup.find_all("table"):
+            for row in table.find_all("tr")[1:]:
                 cols = row.find_all("td")
                 if len(cols) >= 1:
-                    entry = " | ".join(col.text.strip() for col in cols if col.text.strip())
-                    results.append(entry)
+                    entry = " | ".join(c.text.strip() for c in cols if c.text.strip())
+                    if entry:
+                        results.append(entry)
+        return results if results else None
+    except Exception:
+        return None
 
-        return results if results else ["[!] No structured DNS data found."]
-    except Exception as e:
-        return [f"[!] DNSDumpster error: {e}"]
+
+def _try_hackertarget(domain):
+    try:
+        res = requests.get(
+            HACKERTARGET_URL.format(domain), headers=HEADERS, timeout=12
+        )
+        if res.status_code == 200 and "error" not in res.text.lower()[:30]:
+            lines = [l.strip() for l in res.text.strip().splitlines() if l.strip()]
+            return lines
+        return None
+    except Exception:
+        return None
+
+
+def get_dns_info(domain):
+    results = _try_dnsdumpster(domain)
+    if results:
+        return results
+
+    # Fallback to HackerTarget passive DNS API
+    results = _try_hackertarget(domain)
+    if results:
+        return ["[i] DNSDumpster unavailable — results via HackerTarget API:"] + results
+
+    return ["[!] Both DNSDumpster and HackerTarget fallback failed."]
