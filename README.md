@@ -1,10 +1,10 @@
-🕵️ OSINT Aggregator CLI
+OSINT Aggregator CLI
 
 A lightweight, modular Python tool to collect open-source intelligence (OSINT) from public sources without requiring API keys. It supports IP, domain, and email-based scans with output saved to a formatted file.
 
 
 
-🚀 Features
+Features
 	•	Subdomain enumeration via crt.sh
 	•	Passive DNS and infrastructure lookups via dnsdumpster.com
 	•	IP ownership and ASN info via RDAP (ipwhois)
@@ -12,14 +12,14 @@ A lightweight, modular Python tool to collect open-source intelligence (OSINT) f
 	•	CLI interface (GUI coming soon)
 
 
-📦 Requirements
+Requirements
 
 Install Python dependencies:
 
 pip install -r requirements.txt
 
 
-⚙️ Usage
+Usage
 
 Run from the command line:
 
