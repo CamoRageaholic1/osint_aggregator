@@ -200,7 +200,7 @@ def _write_csv(report, path):
 # ─── Main scanner ─────────────────────────────────────────────────────────────
 
 def run_osint_scan(targets, output_file, output_format="txt", shodan_key=None, enable_ports=None):
-    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     report = {
         "metadata": {
             "timestamp": timestamp,
